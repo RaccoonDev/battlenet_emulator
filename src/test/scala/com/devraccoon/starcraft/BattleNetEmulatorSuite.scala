@@ -1,6 +1,6 @@
 package com.devraccoon.starcraft
 
-import cats.effect.{IO}
+import cats.effect.IO
 import munit.CatsEffectSuite
 
 class BattleNetEmulatorSuite  extends CatsEffectSuite {
@@ -10,3 +10,4 @@ class BattleNetEmulatorSuite  extends CatsEffectSuite {
     }
   }
 }
+
