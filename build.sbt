@@ -6,6 +6,7 @@ scalaVersion := "2.13.6"
 
 libraryDependencies += "org.typelevel" %% "cats-core" % "2.6.1"
 libraryDependencies += "org.typelevel" %% "cats-effect" % "3.2.7"
+libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.5" % Test
 
 // scalac options come from the sbt-tpolecat plugin so need to set any here
 
