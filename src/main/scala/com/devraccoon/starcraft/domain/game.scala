@@ -1,31 +1,15 @@
-package com.devraccoon.starcraft
+package com.devraccoon.starcraft.domain
 
 import cats.data.NonEmptySeq
 import enumeratum._
 import io.estatico.newtype.macros.newtype
 
-object domain {
+import java.util.UUID
 
-  @newtype case class PlayerId(value: String)
-  @newtype case class Nickname(value: String)
-
-  final case class Player(id: PlayerId,
-                          registrationTime: java.time.Instant,
-                          nickname: Nickname)
-
-  @newtype case class MapId(value: String)
-  @newtype case class MapName(value: String)
-
-  @newtype case class MaxPlayers(value: Int)
-  @newtype case class MinPlayers(value: Int)
-  @newtype case class MapVersion(value: Int)
-
-  final case class Map(id: MapId,
-                       creationTime: java.time.Instant,
-                       version: MapVersion,
-                       name: MapName,
-                       maxPlayers: MaxPlayers,
-                       minPlayers: MinPlayers)
+object game {
+  import player._
+  import maps._
+  import resources._
 
   sealed trait GameType extends EnumEntry
 
@@ -39,8 +23,8 @@ object domain {
     case object FreeForAll extends GameType
   }
 
-  @newtype case class GameId(value: String)
-  @newtype case class RegionId(value: String)
+  @newtype case class GameId(value: UUID)
+  @newtype case class RegionId(value: UUID)
   final case class Game(startTime: java.time.Instant,
                         playerId: NonEmptySeq[PlayerId],
                         mapId: MapId,
@@ -48,27 +32,15 @@ object domain {
                         regionId: RegionId,
                         gameType: GameType)
 
-  sealed trait ResourceType extends EnumEntry
-
-  object ResourceType extends Enum[ResourceType] {
-    val values: IndexedSeq[ResourceType] = findValues
-
-    case object Minerals extends ResourceType
-    case object VespenGas extends ResourceType
-  }
-
-  @newtype case class ResourceAmount(value: Long)
-  final case class Money(kind: ResourceType, amount: ResourceAmount)
-
   sealed trait GameEvent {
     def eventTime: java.time.Instant
     def playerId: PlayerId
   }
 
   sealed trait EntityId
-  @newtype case class UnitIdValue(value: String)
+  @newtype case class UnitIdValue(value: UUID)
   final case class UnitId(value: UnitIdValue) extends EntityId
-  @newtype case class BuildingIdValue(value: String)
+  @newtype case class BuildingIdValue(value: UUID)
   final case class BuildingId(value: BuildingIdValue) extends EntityId
 
   @newtype case class Health(value: Long)
@@ -119,5 +91,4 @@ object domain {
                               damageDone: Long,
                               isDestroyed: Boolean)
       extends GameEvent
-
 }
