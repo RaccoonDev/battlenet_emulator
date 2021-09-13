@@ -5,6 +5,7 @@ import enumeratum._
 import io.estatico.newtype.macros.newtype
 
 import java.util.UUID
+import scala.util.Random
 
 object game {
   import player._
@@ -21,6 +22,8 @@ object game {
     case object ThreeVsThree extends GameType
     case object FourVsFour extends GameType
     case object FreeForAll extends GameType
+
+    def random: GameType = values(Random.nextInt(values.length))
   }
 
   @newtype case class GameId(value: UUID)
