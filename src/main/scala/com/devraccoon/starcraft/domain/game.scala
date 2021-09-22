@@ -1,6 +1,6 @@
 package com.devraccoon.starcraft.domain
 
-import cats.data.NonEmptySeq
+import cats.data.NonEmptyList
 import enumeratum._
 import io.estatico.newtype.macros.newtype
 
@@ -12,16 +12,25 @@ object game {
   import maps._
   import resources._
 
-  sealed trait GameType extends EnumEntry
+  sealed trait GameType extends EnumEntry {
+    def numberOfPlayers: Int
+  }
 
   object GameType extends Enum[GameType] {
     val values: IndexedSeq[GameType] = findValues
 
-    case object OneVsOne extends GameType
-    case object TwoVsTwo extends GameType
-    case object ThreeVsThree extends GameType
-    case object FourVsFour extends GameType
-    case object FreeForAll extends GameType
+    case object OneVsOne extends GameType {
+      val numberOfPlayers: Int = 2
+    }
+    case object TwoVsTwo extends GameType {
+      val numberOfPlayers: Int = 4
+    }
+    case object ThreeVsThree extends GameType {
+      val numberOfPlayers: Int = 6
+    }
+    case object FourVsFour extends GameType {
+      val numberOfPlayers: Int = 8
+    }
 
     def random: GameType = values(Random.nextInt(values.length))
   }
@@ -35,7 +44,7 @@ object game {
     def newRandom: RegionId = RegionId(UUID.randomUUID())
   }
   final case class Game(startTime: java.time.Instant,
-                        playerId: NonEmptySeq[PlayerId],
+                        playerId: NonEmptyList[PlayerId],
                         mapId: MapId,
                         gameId: GameId,
                         regionId: RegionId,

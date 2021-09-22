@@ -1,8 +1,8 @@
 package com.devraccoon.starcraft.domain
 
-import cats.data.NonEmptySeq
+import cats.data.NonEmptyList
 import com.devraccoon.starcraft.domain.game.{Game, GameId, GameType, RegionId}
-import com.devraccoon.starcraft.domain.maps.MapId
+import com.devraccoon.starcraft.domain.maps.GameMap
 import com.devraccoon.starcraft.domain.player.{
   Nickname,
   PlayerId,
@@ -27,7 +27,11 @@ object server {
   case class State(registeredPlayers: Map[PlayerId, PlayerInfo],
                    onlinePlayerIds: Set[PlayerId],
                    lookingForGame: Set[GameSearch],
-                   runningGames: Set[Game]) {
+                   runningGames: Set[Game],
+                   availableMaps: Vector[GameMap]) {
+    def registerGameMaps(gameMaps: Vector[GameMap]): State =
+      copy(availableMaps = gameMaps)
+
     def addRegisteredPlayer(event: PlayerRegistered): State =
       copy(registeredPlayers + (event.id -> PlayerInfo(event.id,
                                                        event.nickname,
@@ -78,36 +82,55 @@ object server {
         case (st, (gameType, gameSearches)) =>
           gameType match {
             case GameType.OneVsOne =>
-              startOneVsOne(currentTime, st, gameSearches.toList)
-            case GameType.TwoVsTwo     => ???
-            case GameType.ThreeVsThree => ???
-            case GameType.FourVsFour   => ???
-            case GameType.FreeForAll   => ???
+              startGame(currentTime, gameType, st, gameSearches.toList)
+            case GameType.TwoVsTwo =>
+              startGame(currentTime, gameType, st, gameSearches.toList)
+            case GameType.ThreeVsThree =>
+              startGame(currentTime, gameType, st, gameSearches.toList)
+            case GameType.FourVsFour =>
+              startGame(currentTime, gameType, st, gameSearches.toList)
           }
       }
     }
 
     @tailrec
-    private def startOneVsOne(currentTime: java.time.Instant,
-                              state: State,
-                              gameSearch: List[GameSearch]): State = {
-      gameSearch match {
-        case playerOne :: playerTwo :: others =>
-          startOneVsOne(
-            currentTime,
-            state.copy(
-              runningGames = state.runningGames + Game(
-                currentTime,
-                NonEmptySeq.of(playerOne.id, playerTwo.id),
-                MapId.newRandom,
-                GameId.newRandom,
-                RegionId.newRandom,
-                GameType.OneVsOne
-              )
-            ),
-            others
-          )
-        case _ => state
+    private def startGame(currentTime: java.time.Instant,
+                          gameType: GameType,
+                          state: State,
+                          gameSearch: List[GameSearch]): State = {
+      val numberOfPlayers = gameType.numberOfPlayers
+
+      if (gameSearch.length < numberOfPlayers) state
+      else {
+        val (players, others) =
+          gameSearch.splitAt(numberOfPlayers)
+
+        state.availableMaps
+          .filter(m =>
+            numberOfPlayers >= m.minPlayers.value && numberOfPlayers <= m.maxPlayers.value)
+          .takeOneRandomElement() match {
+          case Some(m) =>
+            startGame(
+              currentTime,
+              gameType,
+              state.copy(
+                runningGames = state.runningGames + Game(
+                  currentTime,
+                  NonEmptyList.fromListUnsafe(players.map(_.id)),
+                  m.id,
+                  GameId.newRandom,
+                  RegionId.newRandom,
+                  gameType
+                ),
+                lookingForGame = state.lookingForGame -- players
+              ),
+              others
+            )
+          case None =>
+            // here should be an event about missing maps for this type of game
+            state
+        }
+
       }
     }
 
@@ -124,6 +147,7 @@ object server {
   }
 
   object State {
-    def empty: State = State(Map.empty, Set.empty, Set.empty, Set.empty)
+    def empty: State =
+      State(Map.empty, Set.empty, Set.empty, Set.empty, Vector.empty)
   }
 }

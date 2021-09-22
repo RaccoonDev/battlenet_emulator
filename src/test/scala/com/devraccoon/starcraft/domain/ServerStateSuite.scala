@@ -1,6 +1,13 @@
 package com.devraccoon.starcraft.domain
 
 import com.devraccoon.starcraft.domain.game.GameType
+import com.devraccoon.starcraft.domain.maps.{
+  GameMap,
+  MapId,
+  MapName,
+  MaxPlayers,
+  MinPlayers
+}
 import com.devraccoon.starcraft.domain.player.{
   Nickname,
   PlayerId,
@@ -20,9 +27,19 @@ class ServerStateSuite extends FunSuite {
   private val playerB = newPlayer("player_b")
   private val playerC = newPlayer("player_c")
   private val playerD = newPlayer("player_d")
+  private val playerE = newPlayer("player_e")
+  private val playerF = newPlayer("player_f")
+  private val playerG = newPlayer("player_g")
+  private val playerH = newPlayer("player_h")
 
   private val state =
     State.empty
+      .registerGameMaps(
+        Vector(
+          GameMap(MapId("lost_temple"),
+                  MapName("Lost Temple"),
+                  MaxPlayers(4),
+                  MinPlayers(2))))
       .addRegisteredPlayer(playerA)
       .addRegisteredPlayer(playerB)
       .addRegisteredPlayer(playerC)
@@ -38,6 +55,21 @@ class ServerStateSuite extends FunSuite {
     .startLookingForGame(java.time.Instant.now(),
                          Set(playerB.id),
                          GameType.OneVsOne)
+
+  private val fourPlayersLookingForTwoGames = twoPlayersOnline
+    .startLookingForGame(java.time.Instant.now(),
+                         Set(playerC.id, playerD.id),
+                         GameType.OneVsOne)
+
+  private val sixPlayersLookingForAGame = fourPlayersLookingForTwoGames
+    .startLookingForGame(java.time.Instant.now(),
+                         Set(playerE.id, playerF.id),
+                         GameType.TwoVsTwo)
+
+  private val eightPlayersWithOneTwoVsTwoGameSearch = sixPlayersLookingForAGame
+    .startLookingForGame(java.time.Instant.now(),
+                         Set(playerG.id, playerH.id),
+                         GameType.TwoVsTwo)
 
   test("No matches when nobody online") {
     val matchedGames =
@@ -59,15 +91,26 @@ class ServerStateSuite extends FunSuite {
   }
 
   test("Two games started when four players looking for two 1vs1 games") {
-    val fourPlayersLookingForTwoGames = twoPlayersOnline
-      .startLookingForGame(java.time.Instant.now(),
-                           Set(playerC.id, playerD.id),
-                           GameType.OneVsOne)
 
     val matchedGames = fourPlayersLookingForTwoGames
       .startMatchedGames(java.time.Instant.now())
       .runningGames
     assertEquals(matchedGames.size, 2)
+  }
+
+  test("Two players are still waiting for a game") {
+    val state =
+      sixPlayersLookingForAGame.startMatchedGames(java.time.Instant.now())
+    assertEquals(state.runningGames.size, 2)
+    assertEquals(state.lookingForGame.size, 2)
+  }
+
+  test("Three games started with one TwoVsTwo game") {
+    val matchedGames = eightPlayersWithOneTwoVsTwoGameSearch
+      .startMatchedGames(java.time.Instant.now())
+      .runningGames
+    assertEquals(matchedGames.size, 3)
+    assertEquals(matchedGames.count(_.gameType == GameType.TwoVsTwo), 1)
   }
 
 }
