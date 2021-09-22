@@ -11,17 +11,17 @@ import com.devraccoon.starcraft.domain.maps.{
 import com.devraccoon.starcraft.domain.player.{
   Nickname,
   PlayerId,
-  PlayerRegistered
+  RegisterPlayer
 }
 import com.devraccoon.starcraft.domain.server.State
 import munit.FunSuite
 
 class ServerStateSuite extends FunSuite {
 
-  private def newPlayer(nickname: String): PlayerRegistered =
-    PlayerRegistered(PlayerId.newRandom,
-                     java.time.Instant.now(),
-                     Nickname(nickname))
+  private def newPlayer(nickname: String): RegisterPlayer =
+    RegisterPlayer(PlayerId.newRandom,
+                   java.time.Instant.now(),
+                   Nickname(nickname))
 
   private val playerA = newPlayer("player_a")
   private val playerB = newPlayer("player_b")

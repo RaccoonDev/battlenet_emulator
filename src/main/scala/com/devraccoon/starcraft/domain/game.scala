@@ -1,6 +1,6 @@
 package com.devraccoon.starcraft.domain
 
-import cats.data.NonEmptyList
+import cats.data.NonEmptyVector
 import enumeratum._
 import io.estatico.newtype.macros.newtype
 
@@ -8,8 +8,8 @@ import java.util.UUID
 import scala.util.Random
 
 object game {
-  import player._
   import maps._
+  import player._
   import resources._
 
   sealed trait GameType extends EnumEntry {
@@ -44,7 +44,7 @@ object game {
     def newRandom: RegionId = RegionId(UUID.randomUUID())
   }
   final case class Game(startTime: java.time.Instant,
-                        playerId: NonEmptyList[PlayerId],
+                        playerIds: NonEmptyVector[PlayerId],
                         mapId: MapId,
                         gameId: GameId,
                         regionId: RegionId,

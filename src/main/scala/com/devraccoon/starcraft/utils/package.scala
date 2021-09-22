@@ -4,7 +4,7 @@ import scala.util.Random
 
 package object utils {
   implicit class IntOps(v: Int) {
-    def percents(p: Int): Int = v * (p / 100)
+    def percents(p: Int): Int = (v * (p.toDouble / 100)).toInt
   }
 
   implicit class ListOps[+A](l: Seq[A]) {
