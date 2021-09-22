@@ -27,7 +27,13 @@ object game {
   }
 
   @newtype case class GameId(value: UUID)
+  object GameId {
+    def newRandom: GameId = GameId(UUID.randomUUID())
+  }
   @newtype case class RegionId(value: UUID)
+  object RegionId {
+    def newRandom: RegionId = RegionId(UUID.randomUUID())
+  }
   final case class Game(startTime: java.time.Instant,
                         playerId: NonEmptySeq[PlayerId],
                         mapId: MapId,

@@ -6,6 +6,10 @@ import java.util.UUID
 
 object player {
   @newtype case class PlayerId(value: UUID)
+  object PlayerId {
+    def newRandom: PlayerId = PlayerId(UUID.randomUUID())
+  }
+
   @newtype case class Nickname(value: String)
 
   final case class PlayerRegistered(id: PlayerId,

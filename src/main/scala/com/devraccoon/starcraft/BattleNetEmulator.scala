@@ -34,7 +34,14 @@ object BattleNetEmulator extends IOApp.Simple {
       implicit clock: Clock[IO]): IO[Unit] =
     for {
       currentTime <- clock.realTimeInstant
-      _ <- state.update(_.startLookingForGame(currentTime))
+      _ <- state.update(_.startSomePlayersLookingForGame(currentTime))
+    } yield ()
+
+  def startGamesThatMatches(state: Ref[IO, State])(
+      implicit clock: Clock[IO]): IO[Unit] =
+    for {
+      currentTime <- clock.realTimeInstant
+      _ <- state.update(_.startMatchedGames(currentTime))
     } yield ()
 
   // With some random interval the system takes an online player and starts a game search
@@ -49,6 +56,7 @@ object BattleNetEmulator extends IOApp.Simple {
       _ <- registerPlayer(serverState, faker).foreverM.start
       _ <- (IO.sleep(5.seconds) >> randomlyBringPlayerOnline(serverState)).foreverM.start
       _ <- (IO.sleep(4.seconds) >> startLookingForGame(serverState)).foreverM.start
+      _ <- (IO.sleep(2.seconds) >> startGamesThatMatches(serverState)).foreverM.start
       printStateFib <- printStateEveryTenSeconds(serverState).start
       _ <- printStateFib.join
     } yield ()

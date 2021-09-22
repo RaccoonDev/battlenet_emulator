@@ -6,6 +6,10 @@ import java.util.UUID
 
 object maps {
   @newtype case class MapId(value: UUID)
+  object MapId {
+    def newRandom: MapId = MapId(UUID.randomUUID())
+  }
+
   @newtype case class MapName(value: String)
 
   @newtype case class MaxPlayers(value: Int)
