@@ -1,5 +1,6 @@
 package com.devraccoon.starcraft
 
+import java.time.Instant
 import scala.util.Random
 
 package object utils {
@@ -16,6 +17,10 @@ package object utils {
 
     def takeOneRandomElement(): Option[A] =
       Random.shuffle(l).headOption
+  }
+
+  implicit class InstantOps(i: Instant) {
+    def millisPrecision: Instant = Instant.ofEpochMilli(i.toEpochMilli)
   }
 
 }
