@@ -24,7 +24,6 @@ object BattleNetEmulator extends IOApp.Simple {
   def dispatchEventsToStdOut(state: Ref[IO, State]): IO[Unit] =
     dispatchEvents(state).map(l => l.foreach(println))
 
-  // After registration players are randomly scheduled from offline to online
   def randomlyBringPlayerOnline(state: Ref[IO, State])(
       implicit clock: Clock[IO]): IO[Unit] =
     for {
@@ -32,7 +31,13 @@ object BattleNetEmulator extends IOApp.Simple {
       _ <- state.update(_.bringSomePlayersOnline(currentTime))
     } yield ()
 
-  // With some random interval the system takes an online player and starts a game search
+  def randomlyBringPlayersOffline(state: Ref[IO, State])(
+      implicit clock: Clock[IO]): IO[Unit] =
+    for {
+      currentTime <- clock.realTimeInstant
+      _ <- state.update(_.bringSomePlayersOffline(currentTime))
+    } yield ()
+
   def startLookingForGame(state: Ref[IO, State])(
       implicit clock: Clock[IO]): IO[Unit] =
     for {
@@ -47,9 +52,12 @@ object BattleNetEmulator extends IOApp.Simple {
       _ <- state.update(_.startMatchedGames(currentTime))
     } yield ()
 
-  // games are started one by one randomly
-
-  // Another thread checks the server state every minutes to see if a game should be started
+  def randomlyCompleteSomeGames(state: Ref[IO, State])(
+      implicit clock: Clock[IO]): IO[Unit] =
+    for {
+      currentTime <- clock.realTimeInstant
+      _ <- state.update(_.randomlyCompleteSomeGames(currentTime))
+    } yield ()
 
   override def run: IO[Unit] =
     for {
@@ -60,6 +68,8 @@ object BattleNetEmulator extends IOApp.Simple {
       _ <- (IO.sleep(1.seconds) >> randomlyBringPlayerOnline(serverState)).foreverM.start
       _ <- (IO.sleep(1.seconds) >> startLookingForGame(serverState)).foreverM.start
       _ <- (IO.sleep(1.seconds) >> startGamesThatMatches(serverState)).foreverM.start
+      _ <- (IO.sleep(5.seconds) >> randomlyCompleteSomeGames(serverState)).foreverM.start
+      _ <- (IO.sleep(3.seconds) >> randomlyBringPlayersOffline(serverState)).foreverM.start
 
       dispatchEventsFib <- (IO.sleep(500.milliseconds) >> dispatchEventsToStdOut(
         serverState)).foreverM.start

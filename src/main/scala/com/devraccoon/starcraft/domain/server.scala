@@ -10,14 +10,16 @@ import com.devraccoon.starcraft.domain.player.{
 }
 import com.devraccoon.starcraft.utils._
 
+import java.time.Instant
+
 import scala.annotation.tailrec
 
 object server {
   case class PlayerInfo(id: PlayerId,
                         nickname: Nickname,
-                        registrationTime: java.time.Instant,
-                        lastActivity: java.time.Instant) {
-    def withLastActivity(activityTime: java.time.Instant): PlayerInfo = {
+                        registrationTime: Instant,
+                        lastActivity: Instant) {
+    def withLastActivity(activityTime: Instant): PlayerInfo = {
       copy(lastActivity = activityTime)
     }
   }
@@ -25,11 +27,11 @@ object server {
   case class GameSearch(id: PlayerId, gameType: GameType)
 
   sealed trait ServerEvent {
-    def eventTime: java.time.Instant
+    def eventTime: Instant
   }
 
   final case class GameStarted(
-      eventTime: java.time.Instant,
+      eventTime: Instant,
       gameId: GameId,
       playerIds: NonEmptyVector[PlayerId],
       mapId: MapId,
@@ -38,30 +40,30 @@ object server {
   ) extends ServerEvent
 
   final case class GameFinished(
-      eventTime: java.time.Instant,
+      eventTime: Instant,
       gameId: GameId
   ) extends ServerEvent
 
   final case class PlayerRegistered(
-      eventTime: java.time.Instant,
+      eventTime: Instant,
       playerId: PlayerId,
       nickname: Nickname
   ) extends ServerEvent
 
   final case class PlayerOnline(
-      eventTime: java.time.Instant,
+      eventTime: Instant,
       playerId: PlayerId,
       nickname: Nickname
   ) extends ServerEvent
 
   final case class PlayerIsLookingForAGame(
-      eventTime: java.time.Instant,
+      eventTime: Instant,
       playerId: PlayerId,
       gameType: GameType
   ) extends ServerEvent
 
   final case class PlayerOffline(
-      eventTime: java.time.Instant,
+      eventTime: Instant,
       playerId: PlayerId,
       nickname: Nickname
   ) extends ServerEvent
@@ -92,7 +94,7 @@ object server {
         ) +: notDispatchedGameEvents
       )
 
-    def bringSomePlayersOnline(currentTime: java.time.Instant): State = {
+    def bringSomePlayersOnline(currentTime: Instant): State = {
       val offlinePlayerIds =
         registeredPlayers.keySet.diff(onlinePlayerIds).toList
       val newOnlinePlayerIds =
@@ -100,7 +102,26 @@ object server {
       bringPlayersOnline(currentTime, newOnlinePlayerIds)
     }
 
-    def bringPlayersOnline(currentTime: java.time.Instant,
+    def bringSomePlayersOffline(currentTime: Instant): State = {
+      val playerIdLookingForGame = lookingForGame.map(_.id)
+      val playedIdsInGame = runningGames.flatMap(_.playerIds.toVector.toSet)
+
+      val playerIdsWhoIdleForMoreThan30seconds =
+        registeredPlayers.view.filter {
+          case (k, v) =>
+            onlinePlayerIds.contains(k) && !playedIdsInGame.contains(k) && !playerIdLookingForGame
+              .contains(k) && v.lastActivity.isBefore(
+              currentTime.minusSeconds(30))
+        }
+
+      copy(
+        onlinePlayerIds = onlinePlayerIds -- playerIdsWhoIdleForMoreThan30seconds.keySet,
+        notDispatchedGameEvents = notDispatchedGameEvents ++ playerIdsWhoIdleForMoreThan30seconds.values
+          .map(p => PlayerOffline(currentTime, p.id, p.nickname))
+      )
+    }
+
+    def bringPlayersOnline(currentTime: Instant,
                            newOnlinePlayerIds: Set[PlayerId]): State = {
       copy(
         registeredPlayers = registeredPlayers ++ withLastActivity(
@@ -113,8 +134,7 @@ object server {
       )
     }
 
-    def startSomePlayersLookingForGame(
-        currentTime: java.time.Instant): State = {
+    def startSomePlayersLookingForGame(currentTime: Instant): State = {
       val subsetOfOnlinePlayers: Set[PlayerId] = onlinePlayerIds
         .diff(lookingForGame.map(_.id))
         .toList
@@ -124,7 +144,7 @@ object server {
       startLookingForGame(currentTime, subsetOfOnlinePlayers)
     }
 
-    def startLookingForGame(currentTime: java.time.Instant,
+    def startLookingForGame(currentTime: Instant,
                             playersWhoStartedLookingForAGame: Set[PlayerId],
                             gameType: GameType = GameType.random): State = {
       copy(
@@ -145,20 +165,33 @@ object server {
       )
     }
 
-    def startMatchedGames(currentTime: java.time.Instant): State = {
+    def startMatchedGames(currentTime: Instant): State =
       lookingForGame.groupBy(_.gameType).foldLeft(this) {
         case (st, (gameType, gameSearches)) =>
-          gameType match {
-            case GameType.OneVsOne =>
-              startGame(currentTime, gameType, st, gameSearches.toVector)
-            case GameType.TwoVsTwo =>
-              startGame(currentTime, gameType, st, gameSearches.toVector)
-            case GameType.ThreeVsThree =>
-              startGame(currentTime, gameType, st, gameSearches.toVector)
-            case GameType.FourVsFour =>
-              startGame(currentTime, gameType, st, gameSearches.toVector)
-          }
+          startGame(currentTime, gameType, st, gameSearches.toVector)
       }
+
+    def randomlyCompleteSomeGames(currentTime: Instant): State = {
+      val finishedGames = runningGames
+        .filter(
+          game =>
+            java.time.Duration
+              .between(currentTime, game.startTime)
+              .abs()
+              .compareTo(java.time.Duration.ofSeconds(30)) > 0)
+        .toList
+        .takeRandomPercentOfElements(10)
+
+      copy(
+        notDispatchedGameEvents = notDispatchedGameEvents ++ finishedGames
+          .map(g => GameFinished(currentTime, g.gameId)),
+        runningGames = runningGames -- finishedGames,
+        registeredPlayers = registeredPlayers ++ withLastActivity(
+          registeredPlayers,
+          finishedGames.flatMap(g => g.playerIds.toVector).toSet,
+          currentTime
+        )
+      )
     }
 
     def dispatchAllEvents: (State, List[ServerEvent]) =
@@ -177,7 +210,7 @@ object server {
     private def withLastActivity(
         registeredPlayers: Map[PlayerId, PlayerInfo],
         affectedIds: Set[PlayerId],
-        currentTime: java.time.Instant): Map[PlayerId, PlayerInfo] =
+        currentTime: Instant): Map[PlayerId, PlayerInfo] =
       if (affectedIds.isEmpty)
         Map.empty
       else
@@ -187,7 +220,7 @@ object server {
           .toMap
 
     @tailrec
-    private def startGame(currentTime: java.time.Instant,
+    private def startGame(currentTime: Instant,
                           gameType: GameType,
                           state: State,
                           gameSearch: Vector[GameSearch]): State = {
