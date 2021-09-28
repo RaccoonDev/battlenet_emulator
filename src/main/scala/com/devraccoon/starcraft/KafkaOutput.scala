@@ -10,6 +10,7 @@ import com.devraccoon.starcraft.domain.server.ServerEvent
 import com.sksamuel.avro4s.RecordFormat
 import org.apache.kafka.clients.admin.NewTopic
 import com.devraccoon.starcraft.utils.avro._
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 
 object KafkaOutput {
 
@@ -48,7 +49,9 @@ object KafkaOutput {
       .resource[IO](
         BootstrapServers(kafkaBootstrapServer),
         SchemaRegistryUrl(schemaRegistryUri),
-        clientId
+        clientId,
+        (AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, "false"),
+        (AbstractKafkaSchemaSerDeConfig.USE_LATEST_VERSION, "true")
       )
       .map(_.toAvro4s[EventId, ServerEvent])
 

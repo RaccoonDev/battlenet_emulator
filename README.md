@@ -28,11 +28,16 @@ curl http://localhost:8081/subjects
 http curl http://localhost:8081/subjects
 ```
 
-Schema registry compatibility settings can be adjusted via
+Schema registry compatibility settings can be adjusted via:
 ```shell
 curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" \
   --data '{"compatibility": "NONE"}' \
   http://localhost:8081/config
 # OR
 http PUT http://localhost:8081/config "Content-Type: application/vnd.schemaregistry.v1+json" compatibility="NONE" 
+```
+
+A nice way of getting schema printed out:
+```shell
+http localhost:8081/subjects/battlenet.server.events.v1-value/versions/1 | jq ".schema" | sed 's/^"\(.*\)"$/\1/' | sed 's/\\"/"/g' | jq
 ```
