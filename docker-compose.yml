@@ -1,5 +1,4 @@
----
-version: '2'
+version: '3'
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:6.2.1
@@ -52,3 +51,26 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:29092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+  grafana:
+    image: grafana/grafana:latest
+    hostname: grafana
+    container_name: grafana
+    ports:
+      - "3100:3000"
+
+  influxdb:
+    image: influxdb:2.0
+    hostname: influxdb
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+
+  influxdb_cli:
+    links:
+      - influxdb
+    image: influxdb:2.0
+    container_name: influxdb_cli
+    depends_on:
+      - influxdb
+    entrypoint: influx setup --bucket battlenet-server -t battlenet-token -o devraccoon --username=influx --password=Qwerty11! --host=http://influxdb:8086 -f
