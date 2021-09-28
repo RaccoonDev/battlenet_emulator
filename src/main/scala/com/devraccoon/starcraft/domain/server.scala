@@ -28,6 +28,7 @@ object server {
 
   sealed trait ServerEvent {
     def eventTime: Instant
+    def getId: String
   }
 
   final case class GameStarted(
@@ -37,36 +38,48 @@ object server {
       mapId: MapId,
       regionId: RegionId,
       gameType: GameType
-  ) extends ServerEvent
+  ) extends ServerEvent {
+    override def getId: String = s"game|${gameId.value}"
+  }
 
   final case class GameFinished(
       eventTime: Instant,
       gameId: GameId
-  ) extends ServerEvent
+  ) extends ServerEvent {
+    override def getId: String = s"game|${gameId.value}"
+  }
 
   final case class PlayerRegistered(
       eventTime: Instant,
       playerId: PlayerId,
       nickname: Nickname
-  ) extends ServerEvent
+  ) extends ServerEvent {
+    override def getId: String = s"player|${playerId.value}"
+  }
 
   final case class PlayerOnline(
       eventTime: Instant,
       playerId: PlayerId,
       nickname: Nickname
-  ) extends ServerEvent
+  ) extends ServerEvent {
+    override def getId: String = s"player|${playerId.value}"
+  }
 
   final case class PlayerIsLookingForAGame(
       eventTime: Instant,
       playerId: PlayerId,
       gameType: GameType
-  ) extends ServerEvent
+  ) extends ServerEvent {
+    override def getId: String = s"player|${playerId.value}"
+  }
 
   final case class PlayerOffline(
       eventTime: Instant,
       playerId: PlayerId,
       nickname: Nickname
-  ) extends ServerEvent
+  ) extends ServerEvent {
+    override def getId: String = s"player|${playerId.value}"
+  }
 
   case class State(registeredPlayers: Map[PlayerId, PlayerInfo],
                    onlinePlayerIds: Set[PlayerId],

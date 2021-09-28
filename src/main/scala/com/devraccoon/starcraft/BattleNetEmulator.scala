@@ -1,9 +1,15 @@
 package com.devraccoon.starcraft
 
+import cats.effect.kernel.Resource
 import cats.effect.{Clock, IO, IOApp, Ref}
+import cats.syntax.foldable._
+import com.banno.kafka.ClientId
+import com.banno.kafka.producer.ProducerApi
+import com.devraccoon.starcraft.KafkaOutput.EventId
 import com.devraccoon.starcraft.domain.server.{ServerEvent, State}
 import com.devraccoon.starcraft.utils._
 import com.github.javafaker.Faker
+import org.apache.kafka.clients.producer.ProducerRecord
 
 import scala.concurrent.duration._
 
@@ -23,6 +29,22 @@ object BattleNetEmulator extends IOApp.Simple {
 
   def dispatchEventsToStdOut(state: Ref[IO, State]): IO[Unit] =
     dispatchEvents(state).map(l => l.foreach(println))
+
+  def dispatchEventsToKafka(
+      state: Ref[IO, State],
+      producerResource: Resource[IO, ProducerApi[IO, EventId, ServerEvent]])
+    : IO[Unit] = {
+    producerResource.use { p =>
+      for {
+        events <- dispatchEvents(state)
+          .map(events =>
+            events.map(e =>
+              new ProducerRecord(KafkaOutput.topicName, EventId(e.getId), e)))
+        _ <- events.traverse_(p.sendSync)
+      } yield ()
+    }
+
+  }
 
   def randomlyBringPlayerOnline(state: Ref[IO, State])(
       implicit clock: Clock[IO]): IO[Unit] =
@@ -61,6 +83,7 @@ object BattleNetEmulator extends IOApp.Simple {
 
   override def run: IO[Unit] =
     for {
+      _ <- KafkaOutput.init
       faker <- IO(new Faker())
       gameMaps <- Maps.getMaps
       serverState <- Ref[IO].of(State.empty.registerGameMaps(gameMaps))
@@ -71,8 +94,10 @@ object BattleNetEmulator extends IOApp.Simple {
       _ <- (IO.sleep(5.seconds) >> randomlyCompleteSomeGames(serverState)).foreverM.start
       _ <- (IO.sleep(3.seconds) >> randomlyBringPlayersOffline(serverState)).foreverM.start
 
-      dispatchEventsFib <- (IO.sleep(500.milliseconds) >> dispatchEventsToStdOut(
-        serverState)).foreverM.start
+      dispatchEventsFib <- (IO.sleep(500.milliseconds) >> dispatchEventsToKafka(
+        serverState,
+        KafkaOutput
+          .getProducer(ClientId("battle-net-server")))).foreverM.start
 
       _ <- dispatchEventsFib.join
     } yield ()
