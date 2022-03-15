@@ -15,7 +15,7 @@ object Maps {
   def getMaps: IO[Vector[GameMap]] = IO.pure(
     Vector(
       GameMap(
-        MapId("list_tample"),
+        MapId("lost_tample"),
         MapName("Lost Tample"),
         MaxPlayers(4),
         MinPlayers(2)

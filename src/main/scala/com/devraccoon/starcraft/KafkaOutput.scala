@@ -22,13 +22,14 @@ object KafkaOutput {
     RecordFormat[ServerEvent]
 
   val topic = new NewTopic("battlenet.server.events.v1", 1, 1.toShort)
-  val kafkaBootstrapServer = "localhost:9092"
+  // val kafkaBootstrapServer = "localhost:9092"
 
   val topicName: String = topic.name()
-  val schemaRegistryUri = "http://localhost:8081"
+  // val schemaRegistryUri = "http://localhost:8081"
 
-  val init: IO[Unit] =
+  def init(kafkaBootstrapServer: String, schemaRegistryUri: String): IO[Unit] =
     for {
+      _ <- IO(println(s"Initializing kafka output. Bootstrap server: $kafkaBootstrapServer, Schema registry: $schemaRegistryUri"))
       _ <- AdminApi
         .createTopicsIdempotent[IO](kafkaBootstrapServer, topic :: Nil)
       _ <- SchemaRegistryApi
@@ -43,7 +44,7 @@ object KafkaOutput {
     * @param clientId tuple of config key and config value. It is best defined using helper object ClientId("client-id-value-here")
     * @return resource with access to a kafka producer
     */
-  def getProducer(clientId: (String, String))
+  def getProducer(clientId: (String, String), kafkaBootstrapServer: String, schemaRegistryUri: String)
     : Resource[IO, ProducerApi[IO, EventId, ServerEvent]] =
     ProducerApi.Avro.Generic
       .resource[IO](
@@ -63,7 +64,9 @@ object KafkaOutput {
     */
   def getConsumer(
       clientId: (String, String),
-      groupId: GroupId): Resource[IO, ConsumerApi[IO, EventId, ServerEvent]] =
+      groupId: GroupId,
+      kafkaBootstrapServer: String, 
+      schemaRegistryUri: String): Resource[IO, ConsumerApi[IO, EventId, ServerEvent]] =
     ConsumerApi.Avro4s.resource[IO, EventId, ServerEvent](
       BootstrapServers(kafkaBootstrapServer),
       SchemaRegistryUrl(schemaRegistryUri),

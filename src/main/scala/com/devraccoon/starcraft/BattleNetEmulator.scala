@@ -81,9 +81,19 @@ object BattleNetEmulator extends IOApp.Simple {
       _ <- state.update(_.randomlyCompleteSomeGames(currentTime))
     } yield ()
 
+  def readKafkaBootstrapServer: IO[String] = IO(
+    sys.env.get("KAFKA_BOOTSTRAP_SERVER").getOrElse("localhost:9092")
+  )
+  
+  def readSchemaRegistryUri: IO[String] = IO(
+    sys.env.get("SCHEMA_REGISTRY_URI").getOrElse("http://localhost:8081")
+  )
+
   override def run: IO[Unit] =
     for {
-      _ <- KafkaOutput.init
+      kafkaBootstrapServer <- readKafkaBootstrapServer
+      schemaRegistryUri <- readSchemaRegistryUri
+      _ <- KafkaOutput.init(kafkaBootstrapServer, schemaRegistryUri)
       faker <- IO(new Faker())
       gameMaps <- Maps.getMaps
       serverState <- Ref[IO].of(State.empty.registerGameMaps(gameMaps))
@@ -97,7 +107,7 @@ object BattleNetEmulator extends IOApp.Simple {
       dispatchEventsFib <- (IO.sleep(500.milliseconds) >> dispatchEventsToKafka(
         serverState,
         KafkaOutput
-          .getProducer(ClientId("battle-net-server")))).foreverM.start
+          .getProducer(ClientId("battle-net-server"), kafkaBootstrapServer, schemaRegistryUri))).foreverM.start
 
       _ <- dispatchEventsFib.join
     } yield ()

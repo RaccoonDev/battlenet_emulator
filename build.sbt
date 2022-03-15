@@ -21,7 +21,9 @@ lazy val root = (project in file("."))
       "com.github.javafaker" % "javafaker" % "1.0.2",
       "com.banno" %% "kafka4s" % "4.0.0-M4"
     ),
-    testFrameworks += new TestFramework("munit.Framework")
+    testFrameworks += new TestFramework("munit.Framework"),
+    dockerBaseImage := "openjdk:11",
+    packageName in Docker := "dockerraccoon/battle-net-emulator"
   )
 
 scalacOptions ++= Seq("-Ymacro-annotations", "-Yrangepos")
