@@ -8,6 +8,7 @@ resolvers += "confluent" at "https://packages.confluent.io/maven/"
 
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
+  .enablePlugins(JavaAppPackaging)
   .settings(
     Defaults.itSettings,
     libraryDependencies ++= Seq(
