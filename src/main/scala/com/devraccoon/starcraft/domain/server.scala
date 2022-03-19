@@ -52,7 +52,8 @@ object server {
   final case class PlayerRegistered(
       eventTime: Instant,
       playerId: PlayerId,
-      nickname: Nickname
+      nickname: Nickname,
+      invitedBy: Option[PlayerId]
   ) extends ServerEvent {
     override def getId: String = s"player|${playerId.value}"
   }
@@ -103,9 +104,14 @@ object server {
         notDispatchedGameEvents = PlayerRegistered(
           event.registrationTime,
           event.id,
-          event.nickname
+          event.nickname,
+          randomlyMarkAsInvited()
         ) +: notDispatchedGameEvents
       )
+
+    private def randomlyMarkAsInvited(): Option[PlayerId] =
+      if(scala.util.Random.nextBoolean()) Option(onlinePlayerIds.toVector(scala.util.Random.nextInt(onlinePlayerIds.size)))
+      else None
 
     def bringSomePlayersOnline(currentTime: Instant): State = {
       val offlinePlayerIds =
