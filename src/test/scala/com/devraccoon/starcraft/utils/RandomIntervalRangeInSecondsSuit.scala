@@ -1,17 +1,16 @@
 package com.devraccoon.starcraft.utils
 
-import munit.FunSuite
+import cats.effect.IO
+import munit.CatsEffectSuite
 
-class RandomIntervalRangeInSecondsSuit extends FunSuite {
-  def testTwoValues(a: Int, b: Int): Unit = {
-    val randomInterval = RandomIntervalRangeInSeconds(a, b).duration.toSeconds
-    assert(randomInterval >= Math.min(a, b) && randomInterval < Math.max(a, b),
-           s"expected result to be between $a and $b, but got: $randomInterval")
+class RandomIntervalRangeInSecondsSuit extends CatsEffectSuite {
+  def testTwoValues(a: Int, b: Int): IO[Unit] = for {d <- RandomIntervalRangeInSeconds(a, b).duration} yield {
+      assert(d.toSeconds >= Math.min(a, b) && d.toSeconds < Math.max(a, b),
+            s"expected result to be between $a and $b, but got: ${d.toSeconds}")   
   }
 
-  def testOneValue(a: Int): Unit = {
-    val r = RandomIntervalRangeInSeconds(a).duration.toSeconds
-    assert(r == a, s"expected result to be $a, but got $r")
+  def testOneValue(a: Int): IO[Unit] = for { d <- RandomIntervalRangeInSeconds(a).duration } yield {
+    assert(d.toSeconds == a, s"expected result to be $a, but got ${d.toSeconds}")
   }
 
   test("random interval between positive values") {

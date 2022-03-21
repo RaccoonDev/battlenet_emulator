@@ -59,7 +59,7 @@ class ServerEventRecordsSuite extends CatsEffectSuite {
     val registered =
       PlayerRegistered(Instant.now().millisPrecision,
                        PlayerId(UUID.randomUUID()),
-                       Nickname("bb"))
+                       Nickname("bb"), None)
     val playerRegisteredRecord = serverEventRf.to(registered)
 
     assert(playerRegisteredRecord != null)

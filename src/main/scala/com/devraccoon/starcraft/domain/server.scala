@@ -110,7 +110,7 @@ object server {
       )
 
     private def randomlyMarkAsInvited(): Option[PlayerId] =
-      if(scala.util.Random.nextBoolean()) Option(onlinePlayerIds.toVector(scala.util.Random.nextInt(onlinePlayerIds.size)))
+      if(onlinePlayerIds.nonEmpty && scala.util.Random.nextBoolean()) Option(onlinePlayerIds.toVector(scala.util.Random.nextInt(onlinePlayerIds.size)))
       else None
 
     def bringSomePlayersOnline(currentTime: Instant): State = {

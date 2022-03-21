@@ -15,11 +15,12 @@ object Players {
   def playerRegistration(interval: RandomIntervalRangeInSeconds, faker: Faker)(
       implicit clock: Clock[IO]): IO[RegisterPlayer] =
     for {
-      _ <- IO(interval.duration) flatMap IO.sleep
+      d <- interval.duration
+      _ <- IO(println(s"waiting $d")) *> IO.sleep(d)
       nickname <- IO(
         Nickname(faker.funnyName().name().toLowerCase().replace(" ", "_")))
       registrationTime <- clock.realTimeInstant
-      playerRegisteredEvent <- IO(
+      playerRegisteredEvent <- IO(println("Issuing player registered event")) *> IO(
         RegisterPlayer(id = PlayerId(UUID.randomUUID()),
                        registrationTime = registrationTime,
                        nickname = nickname))

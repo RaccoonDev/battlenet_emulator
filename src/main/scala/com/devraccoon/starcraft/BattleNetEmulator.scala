@@ -33,18 +33,17 @@ object BattleNetEmulator extends IOApp.Simple {
   def dispatchEventsToKafka(
       state: Ref[IO, State],
       producerResource: Resource[IO, ProducerApi[IO, EventId, ServerEvent]])
-    : IO[Unit] = {
+    : IO[Unit] = 
     producerResource.use { p =>
       for {
         events <- dispatchEvents(state)
           .map(events =>
             events.map(e =>
               new ProducerRecord(KafkaOutput.topicName, EventId(e.getId), e)))
+        _ <- IO(println(s"Producing Kafka Events: $events"))
         _ <- events.traverse_(p.sendSync)
       } yield ()
     }
-
-  }
 
   def randomlyBringPlayerOnline(state: Ref[IO, State])(
       implicit clock: Clock[IO]): IO[Unit] =
