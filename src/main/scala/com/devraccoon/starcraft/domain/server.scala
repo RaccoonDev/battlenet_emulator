@@ -52,7 +52,8 @@ object server {
   final case class PlayerRegistered(
       eventTime: Instant,
       playerId: PlayerId,
-      nickname: Nickname
+      nickname: Nickname,
+      invitedBy: Option[PlayerId]
   ) extends ServerEvent {
     override def getId: String = s"player|${playerId.value}"
   }
@@ -93,7 +94,8 @@ object server {
     def registerGameMaps(gameMaps: Vector[GameMap]): State =
       copy(availableMaps = gameMaps)
 
-    def addRegisteredPlayer(event: RegisterPlayer): State =
+    def addRegisteredPlayer(event: RegisterPlayer,
+                            invitedBy: Option[PlayerId] = None): State =
       copy(
         registeredPlayers = registeredPlayers + (event.id -> PlayerInfo(
           event.id,
@@ -103,7 +105,8 @@ object server {
         notDispatchedGameEvents = PlayerRegistered(
           event.registrationTime,
           event.id,
-          event.nickname
+          event.nickname,
+          invitedBy
         ) +: notDispatchedGameEvents
       )
 
@@ -147,15 +150,8 @@ object server {
       )
     }
 
-    def startSomePlayersLookingForGame(currentTime: Instant): State = {
-      val subsetOfOnlinePlayers: Set[PlayerId] = onlinePlayerIds
-        .diff(lookingForGame.map(_.id))
-        .toList
-        .takeRandomPercentOfElements(10)
-        .toSet
-
-      startLookingForGame(currentTime, subsetOfOnlinePlayers)
-    }
+    def startSomePlayersLookingForGame(currentTime: Instant): State =
+      startLookingForGame(currentTime, getPercentOfOnlinePlayers(10))
 
     def startLookingForGame(currentTime: Instant,
                             playersWhoStartedLookingForAGame: Set[PlayerId],
@@ -206,6 +202,13 @@ object server {
         )
       )
     }
+
+    private def getPercentOfOnlinePlayers(percent: Int): Set[PlayerId] =
+      onlinePlayerIds
+        .diff(lookingForGame.map(_.id))
+        .toList
+        .takeRandomPercentOfElements(percent)
+        .toSet
 
     def dispatchAllEvents: (State, List[ServerEvent]) =
       (copy(notDispatchedGameEvents = List.empty), notDispatchedGameEvents)
